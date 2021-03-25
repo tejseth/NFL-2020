@@ -7,6 +7,7 @@ library(ggrepel)
 library(ggimage)
 library(nflfastR)
 library(zoo)
+library(gganimate)
 
 
 pbp_20 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
@@ -38,8 +39,8 @@ off_epa <- pbp_rp %>%
   mutate(TeamRank = paste0(posteam, " #", Rank)) %>%
   filter(!is.na(posteam))
 
-team = "LAR"
-ma_plays = 150
+team = "DET"
+ma_plays = 200
 
 team_off <- pbp_rp %>%
   filter(posteam == team) %>%
@@ -97,38 +98,41 @@ graph_team_off <- ggplot() +
   geom_line(data = team_off, aes(x = play_count, y = ma_epa), size = 1.25) +
   theme_minimal() + theme(panel.grid = element_blank()) + theme(legend.position = "none") +
   ylab("EPA Per Play") + xlab("Number of Plays") +
-  labs(title = paste0("Corvette Corvette's Offensive EPA | ",ma_plays,"-Play Moving Average"),
+  labs(title = paste0("Detroit Lions' Offensive EPA | ",ma_plays,"-Play Moving Average"),
        caption = paste0("Chart by ",signature," using code from @cfbNate")) +
-  coord_cartesian(xlim = c(-20, play_count),  # This leaves room for the labels over the dashed lines
-                  clip = 'off')               # This keeps the labels from disappearing
+  coord_cartesian(xlim = c(-20, play_count),  
+                  clip = 'off')
 
 graph_team_off
 
-ggsave(graph_team_off, filename = paste0("no_coaches.png"), 
+ggsave(graph_team_off, filename = paste0("russ_died.png"), 
        dpi = 300, type = "cairo", width = 10, height = 7, units = "in")
 
-ten <- pbp_rp %>%
-  filter(posteam == 'TEN')
-  
-ten %>% group_by(passer) %>%
-  summarize(total_epa = sum(epa, na.rm = T), epa_per_play = mean(epa, na.rm = T)) %>%
-  arrange(desc(total_epa))
 
-ten %>% group_by(rusher) %>%
-  summarize(plays = n(),
-            total_epa = sum(epa, na.rm = T), 
-            epa_per_play = mean(epa, na.rm = T)) %>%
-  arrange(desc(total_epa))
-  
-ten %>% group_by(receiver) %>%
-  summarize(total_epa = sum(epa, na.rm = T), epa_per_play = mean(epa, na.rm = T)) %>%
-  arrange(desc(total_epa))  
+team_off %>%
+  ggplot( aes(x=play_count, y=ma_epa)) +
+  geom_line(data = team_off, aes(x = play_count, y = ma_epa), color = "white", size = 3) +
+  geom_line(data = team_off, aes(x = play_count, y = ma_epa), size = 1.25) +
+  annotate(x = -2, y = quantile(off_epa$off_epa)[1], geom = "text", size = 3, hjust = "right", vjust = 0, label = off_epa %>% slice(n()) %>% pull(posteam)) +
+  annotate(x = -2, y = quantile(off_epa$off_epa)[2], geom = "text", size = 3, hjust = "right", vjust = 0, label = "25%ile") +
+  annotate(x = -2, y = quantile(off_epa$off_epa)[3], geom = "text", size = 3, hjust = "right", vjust = 0, label = "Median") +
+  annotate(x = -2, y = quantile(off_epa$off_epa)[4], geom = "text", size = 3, hjust = "right", vjust = 0, label = "75%ile") +
+  annotate(x = -2, y = quantile(off_epa$off_epa)[5], geom = "text", size = 3, hjust = "right", vjust = 0, label = off_epa %>% slice(1) %>% pull(posteam)) +
+  labs(x = "Play Count",
+       y = "Rolling EPA/Play",
+       title = "Detroit Lions 200 Play Rolling EPA/Play Average",
+       caption = "By Tej Seth | @mfbanalytics") +
+  theme_bw() +
+  theme(
+    plot.title = element_text(size = 20, hjust = 0.5, face = "bold"),
+    plot.subtitle = element_text(size = 12, hjust = 0.5),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14),
+    legend.position = "None") +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  transition_reveal(play_count)
 
-pbp_rp %>% group_by(rusher) %>%
-  summarize(plays = n(),
-            total_epa = sum(epa, na.rm = T), 
-            epa_per_play = mean(epa, na.rm = T)) %>%
-  filter(plays > 100) %>%
-  arrange(desc(epa_per_play))
+anim_save("lions_rolling.gif")
 
 
